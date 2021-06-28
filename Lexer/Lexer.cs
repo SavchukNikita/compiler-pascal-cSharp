@@ -165,6 +165,10 @@ namespace compiler
                   addSymbol(symbol, States.Error);
                 }
               }
+              else if (Char.IsLetter(symbol))
+              {
+                addSymbol(symbol, States.Error);
+              }
               else if(symbol == '.' && buf[buf.Length - 1] == '.')
               {
                 state = States.Start;
@@ -195,6 +199,10 @@ namespace compiler
                     errorHadler($"Range check error: {buf}");
                   }
                 }
+                else if (isEnd)
+                {
+                  errorHadler($"Syntax error: \"{buf}\"");
+                }
 
                 addSymbol(symbol, States.Error);
               }
@@ -212,12 +220,6 @@ namespace compiler
               }
               else
               {
-                if (isLast)
-                {
-                  isLast = false;
-                  symbol = '\0';
-                }
-
                 if (float.TryParse(buf, out float res))
                 {
                   if (float.Parse(buf) >= 2.9e-39 && float.Parse(buf) <= 1.7e38)
@@ -229,6 +231,11 @@ namespace compiler
                   {
                     errorHadler($"Range check error: {buf}");
                   }
+                }
+
+                if (isLast)
+                {
+                  errorHadler($"Syntax error: \"{buf}\"");
                 }
 
                 addSymbol(symbol, States.Error);
@@ -313,8 +320,15 @@ namespace compiler
               }
               else
               {
-                  state = States.Start;
-                  return new Token(coordinates, TokenType.separator, buf, buf);
+                  if (buf == "." && Char.IsLetterOrDigit(symbol))
+                  {
+                    addSymbol(symbol, States.Error);
+                  }
+                  else
+                  {
+                    state = States.Start;
+                    return new Token(coordinates, TokenType.separator, buf, buf);
+                  }
               }
 
               break;
@@ -371,7 +385,7 @@ namespace compiler
         isLast = true;
         isEnd = true;
         string output = $"{coordinates[0]}:{coordinates[1]} {text}";
-        Console.WriteLine(output);
+        throw new CustomException(output);
       }
 
       public void clearBuffer()
@@ -461,9 +475,10 @@ namespace compiler
       {
         int input = streamReader.Read();
         symbol = (char) input;
-        currentCol += 1;
 
         isEnd = isLast;
+
+        if (!isEnd) currentCol += 1;
 
         if (input == -1)
         {

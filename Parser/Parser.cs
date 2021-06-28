@@ -20,23 +20,19 @@ namespace compiler
       Token token = currToken;
       if (token.isEOF())
       {
-        new CustomException($"{token.str}: {token.col}  expected expression");
-        throw new System.Exception();
+        throw new CustomException($"{token.str}: {token.col}  expected expression");
       }
-      else
+      Node left = parseTerm();
+      Token operation = currToken;
+      while (Convert.ToString(operation.value) == "+" || Convert.ToString(operation.value) == "-")
       {
-        Node left = parseTerm();
-        Token operation = currToken;
-        while (Convert.ToString(operation.value) == "+" || Convert.ToString(operation.value) == "-")
-        {
-          currToken = lexer.getLexem();
-          Node right = parseTerm();
-          left = new BinaryOpNode(operation, left, right);
-          operation = currToken;
-        }
-
-        return left;
+        currToken = lexer.getLexem();
+        Node right = parseTerm();
+        left = new BinaryOpNode(operation, left, right);
+        operation = currToken;
       }
+
+      return left;
     }
 
     public Node parseTerm()
@@ -60,6 +56,7 @@ namespace compiler
       currToken = lexer.getLexem();
       
       if (token.type == TokenType.identifier) return new IdentifierNode(token);
+
       if ( Convert.ToString(token.value) == "-" || Convert.ToString(token.value) == "+")
       {
         Node operand = parseFactor();
@@ -72,15 +69,12 @@ namespace compiler
         token = currToken;
 
         if (Convert.ToString(token.value) != ")") new CustomException($"{token.str}: {token.col}  ')' expected");
-        else
-        {
-          currToken = lexer.getLexem();
-          return left;
-        }
         
+        currToken = lexer.getLexem();
+        return left;
       }
 
-      return new IntegerNode(token);
+      throw new CustomException($"{token.str}: {token.col}  Unexpected symbols {token.code}");
     }
   }
 }
