@@ -1,0 +1,381 @@
+using System;
+using System.IO;
+using System.Collections.Generic;
+
+namespace compiler
+{
+    class Lexer
+    {
+      States state;
+      private string[] reservedWords = 
+      {
+        "array", "asm", "begin", "case", "const", "constructor", "destructor", "do",
+        "downto", "else", "end", "exports", "file", "for", "function", "goto", "if", "implementation",
+        "in", "inherited", "inline", "interface", "label", "library", "nil", "object",
+        "of", "packed", "procedure", "program", "record", "repeat", "set", "shl", "shr",
+        "string", "then", "to", "type", "unit", "until", "uses", "var", "while", "with", "xor"
+      };
+      private string[] predefinedWords = 
+      {
+        "abs", "arctan", "boolean", "char", "cos", "dispose", "eof", "eoln", "exp",
+        "false", "get", "input", "integer", "ln", "maxint", "new", "output",
+        "pack", "page", "pred", "put", "read", "readln", "real", "reset", "rewrite",
+        "sin", "sqr", "sqrt", "succ", "text", "true", "unpack", "write", "writeln"
+      };
+
+      private string[] separators = {".", ",", ";", ":", ".."};
+      private char[] spaceSymbols = {'\0', ' ', '\n', '\t', '\0', '\r'};
+      private string[] operators = 
+      { 
+        "+", "-", "*", "/", "%", "&",
+        "|", "^", "!", "~", "=", "<",
+        ">", "++", "--", "&&", "||", 
+        "!=", "<=", ">=", "=>", "mod", "div",
+        "and", "or", "not"
+      };
+
+      private string[] assignment = 
+      {
+        ":=", "+=", "-=", "*=", "/="
+      };
+
+      private string buf = "";
+      private char symbol = new char();
+
+      private int currentStr = 1;
+      private int currentCol = 0;
+
+      private int[] coordinates = new int[2];
+
+      private bool isLast = false;
+      private bool isEnd = false;
+
+      private StreamReader streamReader;
+      TokenType TokenType = new TokenType();
+
+      public Lexer(string path)
+      {
+        streamReader = new StreamReader(path);
+        getNextSymbol();
+      } 
+
+      public Token getLexem()
+      {
+        clearBuffer();
+
+        while (!isEnd)
+        {
+          isEnd = isLast;
+          switch (state)
+          {
+            case States.Start:
+              coordinates[0] = currentStr;
+              coordinates[1] = currentCol;
+
+              if (isSpaceSymbols(symbol))
+              {
+                if (symbol == '\n') newLine();
+                getNextSymbol();
+              }
+              else if (Char.IsLetter(symbol))
+              {
+                addSymbol(symbol, States.Identifier);
+              }
+              else if (Char.IsDigit(symbol))
+              {
+                addSymbol(symbol, States.Int);
+              }
+              else if (symbol == '\'')
+              {
+                addSymbol(symbol, States.String);
+              }
+              else if(isOperator(buf + symbol))
+              {
+                addSymbol(symbol, States.Operator);
+              }
+              else if(isSeparator(buf + symbol))
+              {
+                addSymbol(symbol, States.Sep);
+              }
+              else
+              {
+                addSymbol(symbol, States.Error);
+              }
+
+              break;
+            
+            case States.Int:
+              if (Char.IsDigit(symbol))
+              {
+                addSymbol(symbol, States.Int);
+              }
+              else if (symbol == '.')
+              {
+                addSymbol(symbol, States.Real);
+              }
+              else if (Char.ToLower(symbol) == 'e')
+              {
+                addSymbol(symbol, States.RealExp);
+              }
+              else
+              {
+                state = States.Start;
+                // как можно решить проблему выхода за границу числа?
+                if (Math.Abs(Int64.Parse(buf)) <= 2147483647 )
+                {
+                  return new Token(coordinates, TokenType.integer, buf, Int64.Parse(buf));
+                }
+
+                return new Token(coordinates, TokenType.error, "", "");
+              }
+              break;
+
+            case States.Real:
+              if (Char.IsDigit(symbol))
+              {
+                addSymbol(symbol, States.Real);
+              }
+              else if (Char.ToLower(symbol) == 'e')
+              {
+                if (buf[buf.Length - 1] != '.')
+                {
+                  addSymbol(symbol, States.RealExp);
+                }
+                else
+                {
+                  addSymbol(symbol, States.Error);
+                }
+              }
+              else
+              {
+                state = States.Start;
+                if (buf[buf.Length - 1] != '.')
+                {
+                  if (float.Parse(buf) >= 2.9e-39 && float.Parse(buf) <= 1.7e38)
+                  {
+                    return new Token(coordinates, TokenType.real, buf, float.Parse(buf));
+                  }
+                }
+
+                addSymbol(symbol, States.Error);
+              }
+
+              break;
+
+            case States.RealExp:
+              if ((symbol == '-' || symbol == '+') && buf[buf.Length - 1] == 'e')
+              {
+                addSymbol(symbol, States.RealExp);
+              }
+              else if (Char.IsDigit(symbol))
+              {
+                addSymbol(symbol, States.RealExp);
+              }
+              else
+              {
+                if (isLast)
+                {
+                  isLast = false;
+                  symbol = '\0';
+                }
+
+                if (float.TryParse(buf, out float res))
+                {
+                  if (float.Parse(buf) >= 2.9e-39 && float.Parse(buf) <= 1.7e38)
+                  {
+                    state = States.Start;
+                    return new Token(coordinates, TokenType.real, buf, res);
+                  }
+                }
+
+                addSymbol(symbol, States.Error);
+              }
+
+              break;
+
+            case States.Identifier:
+              if (Char.IsLetterOrDigit(symbol) || symbol == '_')
+              {
+                addSymbol(symbol, States.Identifier);
+              }
+              else
+              {
+                state = States.Start;
+                string tokenType = TokenType.identifier;
+
+                if(isReservedWord(buf.ToLower())) tokenType = TokenType.reserved;
+                if(isPredefinedWord(buf.ToLower())) tokenType = TokenType.predefined;
+                if(isOperator(buf.ToLower())) tokenType = TokenType.lexOperator;
+
+                return new Token(coordinates, tokenType, buf, buf );
+              }
+
+              break;
+            
+            
+            case States.String:
+              if ((symbol != '\'' && isLast) || symbol == '\n' || symbol=='\r')
+              {
+                {
+                  isLast = false;
+                  symbol = '\0';
+                }
+                addSymbol(symbol, States.Error);
+              }
+              else if (symbol == '\'')
+              {
+                addSymbol(symbol, States.Start);
+                return new Token(coordinates, TokenType.lexString, buf, buf);
+              }
+              else
+              {
+                addSymbol(symbol, States.String);
+              }
+              break;
+
+            case States.Operator:
+              if (isOperator(buf + symbol) || isAssignment(buf + symbol))
+              {
+                addSymbol(symbol, States.Operator);
+              }
+              else
+              {
+                state = States.Start;
+                string type = TokenType.lexOperator;
+                if (isAssignment(buf)) type = TokenType.assignment;
+
+                return new Token(coordinates, type, buf, buf);
+              }
+
+              break;
+
+            case States.Sep:
+              if (isOperator(buf + symbol) || isAssignment(buf + symbol))
+              {
+                state = States.Operator;
+              }
+              else if (isSeparator(buf + symbol))
+              {
+                addSymbol(symbol, States.Sep);
+              }
+              else
+              {
+                state = States.Start;
+                return new Token(coordinates, TokenType.separator, buf, buf);
+              }
+
+              break;
+            
+            case States.Error:
+              if (isSpaceSymbols(symbol) || isLast)
+              {
+                isEnd = true; 
+                return new Token(coordinates, TokenType.error, buf, buf);
+              }
+
+              addSymbol(symbol, States.Error);
+              break;
+          }
+        }
+
+        return new Token(currentStr, currentCol, "EOF", "End of file", "End of file");
+      }
+
+      public void clearBuffer()
+      {
+        buf = "";
+      }
+
+      public void addToBuffer(char ch)
+      {
+        buf += ch;
+      }
+
+      public bool isSpaceSymbols(char ch)
+      {
+        foreach (char symbol in spaceSymbols)
+        {
+          if (symbol == ch) return true;
+        }
+
+        return false;
+      }
+
+      public bool isReservedWord(string word)
+      {
+        foreach (string str in reservedWords)
+        {
+          if (str == word) return true;
+        }
+
+        return false;
+      }
+
+      public bool isPredefinedWord(string word)
+      {
+        foreach (string str in predefinedWords)
+        {
+          if (str == word) return true;
+        }
+
+        return false;
+      }
+
+      public bool isSeparator(string str)
+      {
+        foreach (string sep in separators)
+        {
+          if (str == sep) return true;
+        }
+
+        return false;
+      }
+
+      public bool isOperator(string str)
+      {
+        foreach (string op in operators)
+        {
+          if (str == op) return true;
+        }
+
+        return false;
+      }
+
+      public bool isAssignment(string str)
+      {
+        foreach (string item in assignment)
+        {
+          if (str == item) return true;
+        }
+
+        return false;
+      }
+
+      public void newLine()
+      {
+        currentCol = 1;
+        currentStr += 1;
+      }
+
+      public void addSymbol(char ch, States state)
+      {
+        addToBuffer(ch);
+        this.state = state;
+        getNextSymbol();
+      }
+
+      public void getNextSymbol()
+      {
+        int input = streamReader.Read();
+        symbol = (char) input;
+        currentCol += 1;
+
+        isEnd = isLast;
+
+        if (input == -1)
+        {
+          isLast = true;
+        }
+      }
+    }
+}
