@@ -6,14 +6,23 @@ namespace compiler
     {
         static void Main(string[] args)
         {
-            Lexer lexer = new Lexer("input.txt");
-            Token token = lexer.getLexem();
-            Console.WriteLine($"{token.str}, {token.col}, {token.type}, \"{token.code}\", {token.value}");
-
-            while (!token.isEOF())
+            if(args[0] == "-l")
             {
-                token = lexer.getLexem();
+                Lexer lexer = new Lexer("input.txt");
+                Token token = lexer.getLexem();
                 Console.WriteLine($"{token.str}, {token.col}, {token.type}, \"{token.code}\", {token.value}");
+
+                while (!token.isEOF())
+                {
+                    token = lexer.getLexem();
+                    if(!token.isEOF())
+                        Console.WriteLine($"{token.str}, {token.col}, {token.type}, \"{token.code}\", {token.value}");
+                }
+            }
+
+            if (args[0] == "-ps")
+            {
+                Console.Write("PIZDA");
             }
         }
     }

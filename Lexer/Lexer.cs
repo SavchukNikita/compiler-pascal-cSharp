@@ -23,7 +23,7 @@ namespace compiler
         "sin", "sqr", "sqrt", "succ", "text", "true", "unpack", "write", "writeln"
       };
 
-      private string[] separators = {".", ",", ";", ":", ".."};
+      private string[] separators = {".", ",", ";", ":", "..", "(", ")", "[", "]"};
       private char[] spaceSymbols = {'\0', ' ', '\n', '\t', '\0', '\r'};
       private string[] operators = 
       { 
@@ -41,6 +41,7 @@ namespace compiler
 
       private string buf = "";
       private char symbol = new char();
+      private char saveSymbol = new char();
 
       private int currentStr = 1;
       private int currentCol = 0;
@@ -62,6 +63,12 @@ namespace compiler
       public Token getLexem()
       {
         clearBuffer();
+
+        if (saveSymbol != '\0')
+        {
+          buf += saveSymbol;
+          saveSymbol = '\0';
+        }
 
         while (!isEnd)
         {
@@ -97,6 +104,10 @@ namespace compiler
               {
                 addSymbol(symbol, States.Sep);
               }
+              else if(symbol == '{')
+              {
+                addSymbol(symbol, States.Comment);
+              }
               else
               {
                 addSymbol(symbol, States.Error);
@@ -117,16 +128,24 @@ namespace compiler
               {
                 addSymbol(symbol, States.RealExp);
               }
+              else if(Char.IsLetter(symbol))
+              {
+                addSymbol(symbol, States.Error);
+              } 
               else
               {
                 state = States.Start;
-                // как можно решить проблему выхода за границу числа?
-                if (Math.Abs(Int64.Parse(buf)) <= 2147483647 )
+
+                if (Int32.TryParse(buf, out int res))
                 {
-                  return new Token(coordinates, TokenType.integer, buf, Int64.Parse(buf));
+                  return new Token(coordinates, TokenType.integer, buf, res);
+                }
+                else
+                {
+                  errorHadler($"Range check error: {buf}");
                 }
 
-                return new Token(coordinates, TokenType.error, "", "");
+                addSymbol(symbol, States.Error);
               }
               break;
 
@@ -146,6 +165,22 @@ namespace compiler
                   addSymbol(symbol, States.Error);
                 }
               }
+              else if(symbol == '.' && buf[buf.Length - 1] == '.')
+              {
+                state = States.Start;
+                saveSymbol = '.';
+                buf  = buf.Substring(0, buf.Length - 1);
+
+                if (Int32.TryParse(buf, out int res))
+                {
+                  return new Token(coordinates, TokenType.integer, buf, res);
+                }
+                else
+                {
+                  errorHadler($"Range check error: {buf}");
+                }
+                addSymbol(symbol, States.Error);
+              }
               else
               {
                 state = States.Start;
@@ -154,6 +189,10 @@ namespace compiler
                   if (float.Parse(buf) >= 2.9e-39 && float.Parse(buf) <= 1.7e38)
                   {
                     return new Token(coordinates, TokenType.real, buf, float.Parse(buf));
+                  }
+                  else
+                  {
+                    errorHadler($"Range check error: {buf}");
                   }
                 }
 
@@ -185,6 +224,10 @@ namespace compiler
                   {
                     state = States.Start;
                     return new Token(coordinates, TokenType.real, buf, res);
+                  }
+                  else
+                  {
+                    errorHadler($"Range check error: {buf}");
                   }
                 }
 
@@ -220,7 +263,9 @@ namespace compiler
                   isLast = false;
                   symbol = '\0';
                 }
-                addSymbol(symbol, States.Error);
+                coordinates[0] = currentStr;
+                coordinates[1] = currentCol - 1;
+                errorHadler("End of line encountered");
               }
               else if (symbol == '\'')
               {
@@ -237,6 +282,10 @@ namespace compiler
               if (isOperator(buf + symbol) || isAssignment(buf + symbol))
               {
                 addSymbol(symbol, States.Operator);
+              }
+              else if (buf + symbol == "//")
+              {
+                addSymbol(symbol, States.Comment);
               }
               else
               {
@@ -258,27 +307,71 @@ namespace compiler
               {
                 addSymbol(symbol, States.Sep);
               }
+              else if(buf + symbol == "(*")
+              {
+                addSymbol(symbol, States.Comment);
+              }
               else
               {
-                state = States.Start;
-                return new Token(coordinates, TokenType.separator, buf, buf);
+                  state = States.Start;
+                  return new Token(coordinates, TokenType.separator, buf, buf);
               }
 
               break;
             
             case States.Error:
-              if (isSpaceSymbols(symbol) || isLast)
+              if (isSpaceSymbols(symbol) || isLast || isSeparator(symbol.ToString()))
               {
                 isEnd = true; 
-                return new Token(coordinates, TokenType.error, buf, buf);
+                errorHadler($"Syntax error: \"{buf}\"");
               }
 
               addSymbol(symbol, States.Error);
+              break;
+            
+            case States.Comment:
+              if ( symbol == '}' && buf[0] == '{' || buf[buf.Length - 1].ToString() + symbol == "*)" && buf.Substring(0, 2) == "(*")
+              {
+                state = States.Start;
+                clearBuffer();
+                getNextSymbol();
+              }
+              else if (symbol == '\n')
+              {
+                 if (buf.Length >= 2 && buf.Substring(0, 2) == "//")
+                 {
+                   state = States.Start;
+                   clearBuffer();
+                 }
+                 else addToBuffer(symbol);
+
+                 newLine();
+                 getNextSymbol();
+              }
+              else if(isLast)
+              {
+                coordinates[0] = currentStr;
+                coordinates[1] = currentCol - 1;
+                errorHadler("End of file encountered");
+              }
+              else
+              {
+                addSymbol(symbol, States.Comment);
+              }
+
               break;
           }
         }
 
         return new Token(currentStr, currentCol, "EOF", "End of file", "End of file");
+      }
+
+      public void errorHadler(string text)
+      {
+        isLast = true;
+        isEnd = true;
+        string output = $"{coordinates[0]}:{coordinates[1]} {text}";
+        Console.WriteLine(output);
       }
 
       public void clearBuffer()
@@ -353,7 +446,7 @@ namespace compiler
 
       public void newLine()
       {
-        currentCol = 1;
+        currentCol = 0;
         currentStr += 1;
       }
 

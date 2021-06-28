@@ -11,7 +11,6 @@ namespace compiler
     public string comment { get { return "Comment"; }}
     public string reserved { get { return "Reserved word"; }}
     public string predefined { get { return "Predefined word"; }}
-    public string error { get { return "Error"; }}
     public string assignment { get { return "Assignment"; } }
   }
 }
