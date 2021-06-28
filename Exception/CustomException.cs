@@ -2,11 +2,10 @@ using System;
 
 namespace compiler
 {
-  class CustomException
+  class CustomException : Exception
   {
-    public CustomException(string text)
+    public CustomException(string text) : base(text)
     {
-      Console.WriteLine(text);
     }
   }
 }

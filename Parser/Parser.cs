@@ -12,14 +12,15 @@ namespace compiler
     public Parser(Lexer lexer)
     {
       this.lexer = lexer;
+      currToken = lexer.getLexem();
     }
 
     public Node parseExpr()
     {
-      currToken = lexer.getLexem();
-      if (currToken.isEOF())
+      Token token = currToken;
+      if (token.isEOF())
       {
-        new CustomException($"{currToken.str}: {currToken.col}  expected expression");
+        new CustomException($"{token.str}: {token.col}  expected expression");
         throw new System.Exception();
       }
       else
