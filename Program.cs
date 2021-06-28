@@ -22,7 +22,11 @@ namespace compiler
 
             if (args[0] == "-ps")
             {
-                Console.Write("PIZDA");
+                Lexer lexer = new Lexer("input.txt");
+                Node node = new Parser(lexer).parseExpr();
+
+                string res = node.print(1);
+                Console.WriteLine(res);
             }
         }
     }
