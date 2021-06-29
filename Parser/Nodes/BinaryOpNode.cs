@@ -24,7 +24,7 @@ namespace compiler
       string rightOp = right.print(priority + 1);
       string leftOp = left.print(priority + 1);
 
-      return $"{val}\n{new string (' ', priority * 4)}{leftOp}\n{new string (' ', priority * 4)}{rightOp}";
+      return $"{val}\n{new string (' ', priority * 6)}{leftOp}\n{new string (' ', priority * 6)}{rightOp}";
     }
   }
 }

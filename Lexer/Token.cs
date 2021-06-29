@@ -40,5 +40,10 @@ namespace compiler
         {
           return type == "EOF";
         }
+
+        public string toString()
+        {
+          return $"{str}:{col} {type}, \"{code}\", {value}";
+        }
     }
 }

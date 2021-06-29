@@ -20,7 +20,7 @@ namespace compiler
 
     public override string print(int priority)
     {
-      return $"{Convert.ToString(operation.value)}{operand.getValue()}";
+      return $"{operation.value}{operand.getValue()}";
     }
   }
 }

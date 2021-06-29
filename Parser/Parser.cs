@@ -20,7 +20,7 @@ namespace compiler
       Token token = currToken;
       if (token.isEOF())
       {
-        throw new CustomException($"{token.str}: {token.col}  expected expression");
+        throw new CustomException($"{token.str}: {token.col} expression was expected");
       }
       Node left = parseTerm();
       Token operation = currToken;
@@ -57,6 +57,10 @@ namespace compiler
       
       if (token.type == TokenType.identifier) return new IdentifierNode(token);
 
+      if (token.type == TokenType.integer) return new IntegerNode(token);
+
+      if (token.type == TokenType.real) return new RealNode(token);
+
       if ( Convert.ToString(token.value) == "-" || Convert.ToString(token.value) == "+")
       {
         Node operand = parseFactor();
@@ -68,7 +72,7 @@ namespace compiler
         Node left = parseExpr();
         token = currToken;
 
-        if (Convert.ToString(token.value) != ")") new CustomException($"{token.str}: {token.col}  ')' expected");
+        if (Convert.ToString(token.value) != ")") throw new CustomException($"{token.str}: {token.col}  ')' expected");
         
         currToken = lexer.getLexem();
         return left;
