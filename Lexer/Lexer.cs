@@ -270,8 +270,8 @@ namespace compiler
                   isLast = false;
                   symbol = '\0';
                 }
-                coordinates[0] = currentStr;
-                coordinates[1] = currentCol - 1;
+                // coordinates[0] = currentStr;
+                // coordinates[1] = currentCol - 1;
                 errorHadler("End of line encountered");
               }
               else if (symbol == '\'')
