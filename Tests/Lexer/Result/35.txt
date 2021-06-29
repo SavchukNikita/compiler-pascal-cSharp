@@ -1,2 +1,0 @@
-2:1 Identifier, "a", a
-6:1 Integer, "1", 1
