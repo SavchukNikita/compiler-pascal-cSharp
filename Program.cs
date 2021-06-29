@@ -70,13 +70,21 @@ namespace compiler
                     {
                         Lexer lexer = new Lexer($"./Tests/Lexer/{args[1]}.txt");
                         Token token;
-                        do
+                        try
                         {
-                            token = lexer.getLexem();
-                            if(!token.isEOF())
-                                Console.WriteLine(token.toString());
+                            do
+                            {
+                                token = lexer.getLexem();
+                                if(!token.isEOF())
+                                    Console.WriteLine(token.toString());
+                            }
+                            while (!token.isEOF());
                         }
-                        while (!token.isEOF());
+                        catch (CustomException ex)
+                        {
+                            
+                            Console.WriteLine(ex.Message);
+                        }
                     }
                 }
             }
@@ -122,11 +130,18 @@ namespace compiler
                     }
                     else
                     {
-                        Lexer lexer = new Lexer($"./Tests/Parser/{args[1]}.txt");
-                        Node node = new Parser(lexer).parseExpr();
+                        try
+                        {
+                            Lexer lexer = new Lexer($"./Tests/Parser/{args[1]}.txt");
+                            Node node = new Parser(lexer).parseExpr();  
+                            string res = node.print(1);
+                            Console.WriteLine(res);   
+                        }
+                        catch (CustomException ex)
+                        {
+                            Console.WriteLine(ex.Message);
+                        }
 
-                        string res = node.print(1);
-                        Console.WriteLine(res);
                     }
                 }
             }
