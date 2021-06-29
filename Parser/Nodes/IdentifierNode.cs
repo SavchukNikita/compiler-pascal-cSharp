@@ -19,9 +19,9 @@ namespace compiler
       return $"{token.str}:{token.col}";
     }
 
-    public override string print(int priority=0)
+    public override string print(int priority)
     {
-      return token.value;
+      return getValue();
     }
   }
 }

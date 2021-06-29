@@ -18,7 +18,7 @@ namespace compiler
       return operation.value;
     }
 
-    override public string print(int priority = 1)
+    override public string print(int priority)
     {
       string val = operation.value;
       string rightOp = right.print(priority + 1);

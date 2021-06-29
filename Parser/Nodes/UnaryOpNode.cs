@@ -20,7 +20,7 @@ namespace compiler
 
     public override string print(int priority)
     {
-      return $"{operation.value}{operand.getValue()}";
+      return getValue() + operand.getValue();
     }
   }
 }

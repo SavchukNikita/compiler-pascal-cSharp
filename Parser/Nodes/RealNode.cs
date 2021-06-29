@@ -21,9 +21,9 @@ namespace compiler
       return $"{token.str}:{token.col}";
     }
 
-    override public string print(int priority=0)
+    override public string print(int priority)
     {
-      return  Convert.ToString(token.value);
+      return  getValue();
     }
   }
 }

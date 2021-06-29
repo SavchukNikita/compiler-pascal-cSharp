@@ -23,7 +23,7 @@ namespace compiler
 
     override public string print(int priority=0)
     {
-      return Convert.ToString(token.value);
+      return getValue();
     }
   }
 }
