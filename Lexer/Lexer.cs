@@ -13,10 +13,7 @@ namespace compiler
         "downto", "else", "end", "exports", "file", "for", "function", "goto", "if", "implementation",
         "in", "inherited", "inline", "interface", "label", "library", "nil", "object",
         "of", "packed", "procedure", "program", "record", "repeat", "set", "shl", "shr",
-        "string", "then", "to", "type", "unit", "until", "uses", "var", "while", "with", "xor"
-      };
-      private string[] predefinedWords = 
-      {
+        "string", "then", "to", "type", "unit", "until", "uses", "var", "while", "with", "xor",
         "abs", "arctan", "boolean", "char", "cos", "dispose", "eof", "eoln", "exp",
         "false", "get", "input", "integer", "ln", "maxint", "new", "output",
         "pack", "page", "pred", "put", "read", "readln", "real", "reset", "rewrite",
@@ -254,7 +251,6 @@ namespace compiler
                 string tokenType = TokenType.identifier;
 
                 if(isReservedWord(buf.ToLower())) tokenType = TokenType.reserved;
-                if(isPredefinedWord(buf.ToLower())) tokenType = TokenType.predefined;
                 if(isOperator(buf.ToLower())) tokenType = TokenType.lexOperator;
 
                 return new Token(coordinates, tokenType, buf, buf );
@@ -411,16 +407,6 @@ namespace compiler
       public bool isReservedWord(string word)
       {
         foreach (string str in reservedWords)
-        {
-          if (str == word) return true;
-        }
-
-        return false;
-      }
-
-      public bool isPredefinedWord(string word)
-      {
-        foreach (string str in predefinedWords)
         {
           if (str == word) return true;
         }
