@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 
 namespace compiler
@@ -104,6 +105,10 @@ namespace compiler
               else if(symbol == '{')
               {
                 addSymbol(symbol, States.Comment);
+              }
+              else if(symbol == '#')
+              {
+                addSymbol(symbol, States.Literal);
               }
               else
               {
@@ -240,6 +245,59 @@ namespace compiler
 
               break;
 
+            case States.Literal:
+              if (Char.IsDigit(symbol))
+              {
+                addSymbol(symbol, States.Literal);
+              }
+              else if (symbol == '\'')
+              {
+                addSymbol(symbol, States.String);
+              }
+              else if(Char.IsLetter(symbol))
+              {
+                addSymbol(symbol, States.Error);
+              }
+              else
+              {
+                if(!Char.IsDigit(buf[buf.Length -1]))
+                {
+                  errorHadler($"Syntax error: \"{buf}\"");
+                }
+                else
+                {
+                  Regex regex = new Regex(@"#\d+");
+                  string value = buf;
+
+                  MatchCollection matches = regex.Matches(value);
+                  if (matches.Count > 0)
+                  {
+                    foreach (Match match in matches)
+                    {
+                      if (Int16.TryParse(match.Value.Substring(1), out short res))
+                      {
+                        int index = value.IndexOf(match.Value);
+                        value = value.Substring(0, index) + ((char)res) + value.Substring(index + match.Value.Length);
+                      }
+                      else
+                      {
+                        errorHadler($"Range check error: {match.Value}");
+                      }
+                    }
+                                        
+                  }
+
+                  value = Regex.Replace(value, "'", "");
+                  value = $"'{value}'";
+
+                  state = States.Start;
+
+                  return new Token(coordinates, TokenType.lexString, buf, value); 
+                }
+              }
+
+              break;
+
             case States.Identifier:
               if (Char.IsLetterOrDigit(symbol) || symbol == '_')
               {
@@ -262,10 +320,6 @@ namespace compiler
             case States.String:
               if ((symbol != '\'' && isLast) || symbol == '\n' || symbol=='\r')
               {
-                {
-                  isLast = false;
-                  symbol = '\0';
-                }
                 // coordinates[0] = currentStr;
                 // coordinates[1] = currentCol - 1;
                 errorHadler("End of line encountered");
@@ -273,7 +327,36 @@ namespace compiler
               else if (symbol == '\'')
               {
                 addSymbol(symbol, States.Start);
-                return new Token(coordinates, TokenType.lexString, buf, buf);
+                
+                if(symbol != '#')
+                {
+                  Regex regex = new Regex(@"#\d+");
+                  string value = buf;
+
+                  MatchCollection matches = regex.Matches(value);
+
+                  if (matches.Count > 0)
+                  {
+                    foreach (Match match in matches)
+                    {
+                      if (Int16.TryParse(match.Value.Substring(1), out short res))
+                      {
+                        int index = value.IndexOf(match.Value);
+                        value = value.Substring(0, index) + ((char)res) + value.Substring(index + match.Value.Length);
+                      }
+                    }
+
+                    value = Regex.Replace(value, "'", "");
+                    value = $"'{value}'";
+                                        
+                  }
+
+                  return new Token(coordinates, TokenType.lexString, buf, value);       
+                }
+                else
+                {
+                  addSymbol(symbol, States.Literal);
+                }
               }
               else
               {

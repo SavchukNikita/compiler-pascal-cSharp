@@ -13,5 +13,6 @@ namespace compiler
     Char,
     RealExp,
     Sep,
+    Literal,
   }
 }
